@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A notebook with a coin: diary + money. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#8A5A44"
+        android:pathData="M36,30h32a4,4 0,0 1,4 4v40a4,4 0,0 1,-4 4h-32a4,4 0,0 1,-4 -4v-40a4,4 0,0 1,4 -4z" />
+    <path android:fillColor="#FFFBF7"
+        android:pathData="M40,38h24v3h-24zM40,45h24v3h-24zM40,52h16v3h-16z" />
+    <path android:fillColor="#E0A526"
+        android:pathData="M70,64m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0" />
+    <path android:fillColor="#FFFBF7"
+        android:pathData="M68.5,57h3v14h-3z" />
+</vector>
