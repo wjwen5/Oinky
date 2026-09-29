@@ -34,6 +34,7 @@ class OinkyApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashReport.install(this)
         container = AppContainer(this)
         Notifications.createChannels(this)
         DailyWorker.schedule(this)

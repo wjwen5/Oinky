@@ -206,8 +206,8 @@ interface CategoryRuleDao {
         RateEntity::class, CategoryRule::class, TripEntity::class, TripPlaceEntity::class,
         StickerEntity::class, DayStickerEntity::class,
     ],
-    version = 1,
-    exportSchema = false,
+    version = 2,
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -222,6 +222,8 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         fun build(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "oinky.db").build()
+            Room.databaseBuilder(context, AppDatabase::class.java, "oinky.db")
+                .addMigrations(MIGRATION_1_2)
+                .build()
     }
 }

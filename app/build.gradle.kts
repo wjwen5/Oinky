@@ -13,8 +13,8 @@ android {
         applicationId = "com.oinky.app"
         minSdk = 26 // java.time without desugaring
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     buildTypes {
@@ -37,6 +37,8 @@ android {
 
 ksp {
     arg("room.generateKotlin", "true")
+    // Commit these JSON snapshots: they are what future migrations are written and tested against.
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

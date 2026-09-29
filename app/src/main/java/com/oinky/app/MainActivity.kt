@@ -71,11 +71,20 @@ class MainActivity : ComponentActivity() {
         }
 
         val settings = (application as OinkyApp).container.settings
+        val crash = mutableStateOf(CrashReport.pending(this))
         setContent {
             val wallpaper by settings.wallpaperColors.collectAsState()
             OinkyTheme(wallpaperColors = wallpaper) {
-                ProvideMoodFaces {
-                    AppNav(pendingDestination.value) { pendingDestination.value = null }
+                val report = crash.value
+                if (report != null) {
+                    CrashReportScreen(report) {
+                        CrashReport.clear(this)
+                        crash.value = null
+                    }
+                } else {
+                    ProvideMoodFaces {
+                        AppNav(pendingDestination.value) { pendingDestination.value = null }
+                    }
                 }
             }
         }
