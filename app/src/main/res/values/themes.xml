@@ -1,5 +1,8 @@
 <resources>
-    <style name="Theme.Oinky" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Oinky" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/paper</item>
+        <item name="android:colorBackground">@color/paper</item>
+    </style>
 
     <!-- See-through, dimmed window for the widget's quick-entry card. -->
     <style name="Theme.Oinky.Translucent" parent="android:Theme.Material.Light.NoActionBar">

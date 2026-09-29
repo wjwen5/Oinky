@@ -156,7 +156,7 @@ fun TripsScreen(onOpenTrip: (Long) -> Unit) {
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = MaterialTheme.shapes.large) {
                     WorldMap(
                         world = s.world,
                         fills = s.visited.associateWith { scheme.primary } +
@@ -238,7 +238,11 @@ fun tripDates(trip: TripEntity): String {
 private fun TripCardView(card: TripCard, main: String, onClick: () -> Unit) {
     val t = card.trip
     val today = LocalDate.now()
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Card(
+        onClick = onClick, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+    ) {
         Box(Modifier.fillMaxWidth().height(140.dp)) {
             if (t.coverPhotoPath != null) {
                 AsyncImage(
@@ -263,11 +267,7 @@ private fun TripCardView(card: TripCard, main: String, onClick: () -> Unit) {
                 Text(tripDates(t), color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodySmall)
             }
             if (today in t.range) {
-                Text(
-                    "NOW", color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-                        .clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.primary).padding(horizontal = 8.dp, vertical = 2.dp),
-                )
+                com.oinky.app.ui.components.TripBadge("✈️ Travelling now", Modifier.align(Alignment.TopEnd).padding(8.dp))
             }
         }
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

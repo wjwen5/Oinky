@@ -2,6 +2,29 @@
 
 An Android app (Kotlin + Jetpack Compose) that works like a diary. Each day you pick a mood emoji, write a note, add photos, and log what you spent. All amounts are converted to one main currency using online exchange rates.
 
+![Oinky design preview: month view, trip day page, home-screen widget](docs/design-preview.png)
+
+*Mock-up rendered from the DESIGN.md tokens.*
+
+## Design system
+
+The look is defined in **[DESIGN.md](DESIGN.md)**, which follows the [google-labs-code/design.md](https://github.com/google-labs-code/design.md) format. The style is "Piggy Scrapbook": cream paper, piggy pink, mint for money and coin-gold highlights, chunky rounded shapes, and **Fredoka** + **Nunito** fonts (bundled; SIL OFL, see `licenses/`).
+
+- DESIGN.md is the source of truth. `tools/gen_design_tokens.py` generates `ui/theme/DesignTokens.kt` from it, and `Theme.kt` maps those tokens onto Material 3 (light and dark).
+- Reusable components that match the spec are in `ui/components/Design.kt`: `PaperCard`, `HeroCard`, `AmountText`, `TripBadge` and `SectionTitle`.
+- The brand palette is the default. Wallpaper (Material You) colours are an opt-in switch in Settings.
+
+```bash
+npx -p @google/design.md designmd lint DESIGN.md   # 0 errors, 0 warnings (includes WCAG AA contrast)
+python3 tools/gen_design_tokens.py                 # regenerate Kotlin tokens after editing DESIGN.md
+```
+
+### Mood faces & stickers
+
+- **Custom mood faces.** In Settings → Mood faces, pick a pack (Classic, Piggy 🐷, Weather ☀️, Hearts 💖, Food 🍰) or tap any face to change it to your own emoji or a sticker. The calendar, day page, insights and widget all use your faces. The 1–5 mood scores behind them stay the same, so insights keep working.
+- **Sticker cutouts.** In your gallery, long-press the subject of a photo → **Copy** (or copy a sticker from a chat). Then on a day page tap ✨ → **Paste cutout**. Oinky shrinks the image and trims its transparent edges, and adds it to your sticker library. Stickers go on day pages with a small random tilt, and a day's first sticker appears on the calendar. You can also pick transparent PNGs. Tap a stuck sticker to peel it off; long-press one in the library to delete it.
+
+
 ## Features
 
 | Requirement | How it works |
@@ -58,7 +81,7 @@ coffee 6.8 @starbucks      → merchant (also "at starbucks")
 ## Architecture
 
 ```
-core/   Pure Kotlin/JVM, unit-tested (35 tests)
+core/   Pure Kotlin/JVM, unit-tested (43 tests)
   QuickEntryParser   free text → amount/currency/category/date/merchant
   CategoryClassifier keyword table (MY/SG merchants included) + learned overrides
   Currencies/RateTable  alias resolution, cross-rate conversion, formatting
@@ -67,6 +90,7 @@ core/   Pure Kotlin/JVM, unit-tested (35 tests)
   MoodInsights       spending by mood + headline
   WorldMapData, Mercator, Countries   map outlines, hit-testing, flags, local currency
   TripMath           trip stats, budget pace, travel summary, photo-to-day filing
+  MoodFace, MoodPacks, StickerMath    custom mood faces, packs, cutout trimming
 app/    Android
   data/     Room (days, photos, transactions, recurring rules, rates, learned categories)
   rates/    ExchangeRateRepository (HTTP + cache + historical)

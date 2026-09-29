@@ -5,6 +5,7 @@ import android.content.Context
 import com.oinky.app.data.AppDatabase
 import com.oinky.app.data.LedgerRepository
 import com.oinky.app.data.Settings
+import com.oinky.app.data.StickerRepository
 import com.oinky.app.data.TripRepository
 import com.oinky.app.ocr.ReceiptScanner
 import com.oinky.app.rates.ExchangeRateRepository
@@ -23,6 +24,7 @@ class AppContainer(context: Context) {
     val rates = ExchangeRateRepository(db.rates())
     val ledger = LedgerRepository(context, db, rates, settings)
     val trips = TripRepository(context, db, ledger)
+    val stickers = StickerRepository(context, db, settings)
     val scanner = ReceiptScanner(context)
 }
 

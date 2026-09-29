@@ -141,3 +141,24 @@ data class TripPlaceEntity(
     val lon: Double,
     val createdAt: Long = System.currentTimeMillis(),
 )
+
+/** A sticker in the user's library: a trimmed PNG (usually a transparent cutout). */
+@Entity(tableName = "stickers")
+data class StickerEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val path: String,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
+/** A library sticker stuck onto a diary day, with a little tilt for a scrapbook look. */
+@Entity(tableName = "day_stickers", indices = [Index("epochDay"), Index("stickerId")])
+data class DayStickerEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val epochDay: Long,
+    val stickerId: Long,
+    val rotation: Float = 0f,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
+/** A day sticker joined with its image path, for display. */
+data class DaySticker(val id: Long, val epochDay: Long, val stickerId: Long, val rotation: Float, val path: String)

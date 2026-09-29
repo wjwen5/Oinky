@@ -47,8 +47,21 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import com.oinky.app.data.DaySticker
+import com.oinky.app.ui.components.AmountText
+import com.oinky.app.ui.components.FaceIcon
+import com.oinky.app.ui.components.LocalMoodFaces
+import com.oinky.app.ui.components.PaperCard
+import com.oinky.app.ui.components.SectionTitle
+import com.oinky.app.ui.components.StickerImage
+import com.oinky.app.ui.components.StickerPickerSheet
+import com.oinky.app.ui.components.TripBadge
+import com.oinky.app.ui.theme.Tokens
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -72,7 +85,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,7 +96,6 @@ import com.oinky.app.data.TxnEntity
 import com.oinky.app.ui.components.TransactionEditorDialog
 import com.oinky.app.ui.components.containerViewModel
 import com.oinky.app.ui.components.money
-import com.oinky.app.ui.theme.incomeColor
 import com.oinky.core.Mood
 import com.oinky.core.TxnType
 import java.io.File
@@ -122,6 +133,7 @@ fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit
         uri?.let(vm::scanReceipt)
     }
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
+    var pickingSticker by remember { mutableStateOf(false) }
     val takeReceipt = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok) cameraUri?.let(vm::scanReceipt)
     }
@@ -137,10 +149,14 @@ fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit
         topBar = {
             TopAppBar(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                 title = {
                     Column {
-                        Text(s.date.format(DateTimeFormatter.ofPattern("EEEE")), style = MaterialTheme.typography.labelMedium)
-                        Text(s.date.format(DateTimeFormatter.ofPattern("d MMMM yyyy")))
+                        Text(s.date.format(DateTimeFormatter.ofPattern("EEEE d")), style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            s.date.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 },
                 actions = {
@@ -169,26 +185,40 @@ fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(Tokens.Space.md),
         ) {
             s.trip?.let { trip ->
                 item {
-                    AssistChip(
-                        onClick = { onOpenTrip(trip.id) },
-                        label = { Text("${trip.emoji} Day ${s.tripDay} of ${trip.name} · amounts default to ${trip.localCurrency}") },
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                    TripBadge(
+                        "${trip.emoji} Day ${s.tripDay} of ${trip.name} · amounts in ${trip.localCurrency}",
+                        Modifier.padding(horizontal = Tokens.Space.gutter).clickable { onOpenTrip(trip.id) },
                     )
                 }
             }
             item { MoodPicker(s.mood, vm::setMood) }
             item {
-                OutlinedTextField(
+                // DESIGN.md `diary-note`: a white page with no visible field chrome.
+                TextField(
                     value = note,
                     onValueChange = vm::onNoteChange,
                     placeholder = { Text("Dear diary… how was today?") },
-                    minLines = 5,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    minLines = 6,
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    shape = MaterialTheme.shapes.large,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.Space.gutter),
+                )
+            }
+            item {
+                StickerRow(
+                    stickers = s.stickers,
+                    onAdd = { pickingSticker = true },
+                    onRemove = vm::unstick,
                 )
             }
             item {
@@ -199,27 +229,38 @@ fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit
                 )
             }
             item {
-                Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("💸 Money", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    if (s.spent.signum() > 0) Text("−${money(s.spent, s.mainCurrency)}", fontWeight = FontWeight.SemiBold)
-                    if (s.income.signum() > 0) {
-                        Text("  +${money(s.income, s.mainCurrency)}", fontWeight = FontWeight.SemiBold, color = incomeColor())
+                Row(Modifier.padding(end = Tokens.Space.gutter), verticalAlignment = Alignment.CenterVertically) {
+                    SectionTitle("Money", Modifier.weight(1f))
+                    if (s.spent.signum() > 0) AmountText(s.spent, s.mainCurrency)
+                    if (s.income.signum() > 0) AmountText(s.income, s.mainCurrency, TxnType.INCOME, modifier = Modifier.padding(start = Tokens.Space.sm))
+                }
+            }
+            item {
+                PaperCard(Modifier.fillMaxWidth().padding(horizontal = Tokens.Space.gutter), padded = false) {
+                    if (s.txns.isEmpty()) {
+                        Text(
+                            "No spending logged. Type something like “rm135 on dinner” below.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(Tokens.Space.md),
+                        )
+                    }
+                    s.txns.forEachIndexed { i, t ->
+                        if (i > 0) HorizontalDivider(Modifier.padding(horizontal = Tokens.Space.md), color = MaterialTheme.colorScheme.outlineVariant)
+                        TxnRow(t, s.mainCurrency) { vm.openEdit(t) }
                     }
                 }
             }
-            if (s.txns.isEmpty()) {
-                item {
-                    Text(
-                        "No spending logged. Type something like “rm135 on dinner” below.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
-            }
-            items(s.txns, key = { it.id }) { t -> TxnRow(t, s.mainCurrency) { vm.openEdit(t) } }
-            item { Spacer(Modifier.size(24.dp)) }
+            item { Spacer(Modifier.size(Tokens.Space.lg)) }
         }
+    }
+
+    if (pickingSticker) {
+        StickerPickerSheet(
+            title = "Stick a sticker",
+            onDismiss = { pickingSticker = false },
+            onPick = { vm.stick(it); pickingSticker = false },
+        )
     }
 
     editor?.let { req ->
@@ -238,27 +279,77 @@ fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit
 
 @Composable
 private fun MoodPicker(selected: Mood?, onSelect: (Mood) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Text("How do you feel?", style = MaterialTheme.typography.titleMedium)
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Mood.entries.forEach { m ->
-                val isSel = m == selected
+    val faces = LocalMoodFaces.current.sortedByDescending { it.score }
+    Column(Modifier.fillMaxWidth().padding(horizontal = Tokens.Space.gutter)) {
+        Text("How do you feel?", style = MaterialTheme.typography.titleLarge)
+        Row(Modifier.fillMaxWidth().padding(top = Tokens.Space.sm), horizontalArrangement = Arrangement.SpaceBetween) {
+            faces.forEach { face ->
+                val mood = Mood.fromScore(face.score) ?: return@forEach
+                val isSel = mood == selected
+                // DESIGN.md `mood-face` / `mood-face-selected`.
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(MaterialTheme.shapes.large)
                         .background(if (isSel) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                        .clickable { onSelect(m) }
-                        .padding(8.dp),
+                        .clickable { onSelect(mood) }
+                        .padding(Tokens.Space.sm),
                 ) {
-                    Text(
-                        m.emoji, fontSize = 32.sp,
-                        modifier = Modifier.scale(if (isSel) 1.15f else if (selected == null) 1f else 0.85f),
+                    FaceIcon(
+                        face, 40.dp,
+                        Modifier.scale(if (isSel) 1.12f else if (selected == null) 1f else 0.85f),
                     )
-                    Text(m.label, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        face.label, style = MaterialTheme.typography.labelSmall, maxLines = 1,
+                        color = if (isSel) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
+    }
+}
+
+/** DESIGN.md `sticker`: stuck stickers in a loose row with their tilt; tap one to peel it off. */
+@Composable
+private fun StickerRow(stickers: List<DaySticker>, onAdd: () -> Unit, onRemove: (DaySticker) -> Unit) {
+    var peeling by remember { mutableStateOf<DaySticker?>(null) }
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(Tokens.Space.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = Tokens.Space.gutter),
+    ) {
+        items(stickers, key = { it.id }) { st ->
+            Box(Modifier.clickable { peeling = st }.padding(Tokens.Space.xs)) {
+                StickerImage(st.path, 88.dp, st.rotation)
+            }
+        }
+        item {
+            Surface(
+                onClick = onAdd, shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.size(if (stickers.isEmpty()) 64.dp else 56.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) { Text("✨", fontSize = 22.sp) }
+            }
+        }
+        if (stickers.isEmpty()) {
+            item {
+                Text(
+                    "Add a sticker — paste a cutout\nfrom your photos",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+    peeling?.let { st ->
+        AlertDialog(
+            onDismissRequest = { peeling = null },
+            icon = { StickerImage(st.path, 72.dp, st.rotation) },
+            title = { Text("Peel off this sticker?") },
+            text = { Text("It stays in your sticker library.") },
+            confirmButton = { TextButton(onClick = { onRemove(st); peeling = null }) { Text("Peel off") } },
+            dismissButton = { TextButton(onClick = { peeling = null }) { Text("Keep") } },
+        )
     }
 }
 
@@ -294,11 +385,16 @@ private fun PhotoStrip(paths: List<String>, onAdd: () -> Unit, onDelete: (Int) -
 
 @Composable
 private fun TxnRow(t: TxnEntity, main: String, onClick: () -> Unit) {
-    val sign = if (t.type == TxnType.INCOME) "+" else "−"
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        leadingContent = { Text(t.category.emoji, fontSize = 26.sp) },
-        headlineContent = { Text(t.title) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = {
+            Box(
+                Modifier.size(40.dp).clip(MaterialTheme.shapes.medium).background(MaterialTheme.colorScheme.surfaceContainerLow),
+                contentAlignment = Alignment.Center,
+            ) { Text(t.category.emoji, fontSize = 20.sp) }
+        },
+        headlineContent = { Text(t.title, style = MaterialTheme.typography.titleMedium) },
         supportingContent = {
             Text(
                 listOfNotNull(
@@ -307,14 +403,12 @@ private fun TxnRow(t: TxnEntity, main: String, onClick: () -> Unit) {
                     if (t.recurringId != null) "🔁 recurring" else null,
                     if (t.receiptPath != null) "🧾 receipt" else null,
                 ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
             )
         },
         trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "$sign${money(t.amount, t.currency)}", fontWeight = FontWeight.SemiBold,
-                    color = if (t.type == TxnType.INCOME) incomeColor() else MaterialTheme.colorScheme.onSurface,
-                )
+                AmountText(t.amount, t.currency, t.type)
                 if (t.currency != main) {
                     Text(
                         if (t.converted) "≈ ${money(t.baseAmount, main)}" else "awaiting rate",
@@ -324,7 +418,6 @@ private fun TxnRow(t: TxnEntity, main: String, onClick: () -> Unit) {
             }
         },
     )
-    HorizontalDivider(Modifier.padding(horizontal = 16.dp))
 }
 
 @Composable
@@ -340,8 +433,8 @@ private fun QuickEntryBar(
     onScanGallery: () -> Unit,
 ) {
     var scanMenu by remember { mutableStateOf(false) }
-    Surface(tonalElevation = 3.dp, modifier = Modifier.imePadding()) {
-        Column(Modifier.navigationBarsPadding().padding(8.dp)) {
+    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.imePadding()) {
+        Column(Modifier.navigationBarsPadding().padding(horizontal = Tokens.Space.sm, vertical = Tokens.Space.sm)) {
             AnimatedVisibility(preview != null && text.isNotBlank()) {
                 preview?.let { p ->
                     val e = p.parsed
@@ -388,8 +481,10 @@ private fun QuickEntryBar(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = CircleShape,
                     colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
                     ),
                     modifier = Modifier.weight(1f),

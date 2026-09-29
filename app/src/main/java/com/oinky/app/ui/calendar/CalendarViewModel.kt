@@ -33,6 +33,7 @@ data class DayCell(
     val income: BigDecimal,
     val notePreview: String,
     val photoPath: String?,
+    val stickerPath: String? = null,
     val txnCount: Int,
     /** Flag (or trip emoji) when the day belongs to a trip. */
     val tripMark: String? = null,
@@ -74,10 +75,14 @@ class CalendarViewModel(private val c: AppContainer) : ViewModel() {
             combine(
                 c.ledger.observeDays(from.toEpochDay(), to.toEpochDay()),
                 c.ledger.observeTxns(from.toEpochDay(), to.toEpochDay()),
-                c.ledger.observePhotos(from.toEpochDay(), to.toEpochDay()),
+                combine(
+                    c.ledger.observePhotos(from.toEpochDay(), to.toEpochDay()),
+                    c.stickers.observeRange(from.toEpochDay(), to.toEpochDay()),
+                ) { p, st -> p to st },
                 c.settings.mainCurrency,
                 combine(missed, c.trips.observeTrips(), c.trips.observeAllPlaces()) { m, t, p -> Triple(m, t, p) },
-            ) { days, txns, photos, main, (missedList, trips, places) ->
+            ) { days, txns, (photos, stickers), main, (missedList, trips, places) ->
+                val stickerByDay = stickers.groupBy { LocalDate.ofEpochDay(it.epochDay) }
                 val firstPlace = places.groupBy { it.tripId }.mapValues { (_, l) -> l.first() }
                 val ranges = trips.map { it.range }
                 val tripById = trips.associateBy { it.id }
@@ -93,6 +98,7 @@ class CalendarViewModel(private val c: AppContainer) : ViewModel() {
                         income = dayTxns.filter { it.type == TxnType.INCOME }.sumOf { it.baseAmount },
                         notePreview = dayMap[d]?.note.orEmpty().trim(),
                         photoPath = photoByDay[d]?.firstOrNull()?.path,
+                        stickerPath = stickerByDay[d]?.firstOrNull()?.path,
                         txnCount = dayTxns.size,
                         tripMark = TripMath.tripOn(ranges, d)?.let { r ->
                             firstPlace[r.id]?.let { Countries.flag(it.countryCode) } ?: tripById[r.id]?.emoji

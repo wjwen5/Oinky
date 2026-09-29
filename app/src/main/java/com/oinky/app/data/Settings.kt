@@ -1,12 +1,16 @@
 package com.oinky.app.data
 
 import android.content.Context
+import com.oinky.app.widget.WidgetRefresher
+import com.oinky.core.Mood
+import com.oinky.core.MoodFace
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Tiny SharedPreferences wrapper; the values are few and read synchronously at startup. */
 class Settings(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     private val _mainCurrency = MutableStateFlow(prefs.getString(KEY_MAIN, "SGD")!!)
@@ -14,6 +18,33 @@ class Settings(context: Context) {
 
     private val _diaryReminder = MutableStateFlow(prefs.getBoolean(KEY_DIARY_REMINDER, true))
     val diaryReminder: StateFlow<Boolean> = _diaryReminder.asStateFlow()
+
+    private val _moodFaces = MutableStateFlow(loadFaces())
+
+    /** The five mood faces, best (score 5) first. */
+    val moodFaces: StateFlow<List<MoodFace>> = _moodFaces.asStateFlow()
+
+    private fun loadFaces(): List<MoodFace> = Mood.entries.map { m ->
+        MoodFace.decode(m.score, prefs.getString("mood_face_${m.score}", null)) ?: MoodFace.default(m)
+    }
+
+    fun setMoodFaces(faces: List<MoodFace>) {
+        prefs.edit().apply { faces.forEach { putString("mood_face_${it.score}", it.encode()) } }.apply()
+        _moodFaces.value = loadFaces()
+        WidgetRefresher.request(appContext)
+    }
+
+    fun setMoodFace(face: MoodFace) = setMoodFaces(listOf(face))
+
+    private val _wallpaperColors = MutableStateFlow(prefs.getBoolean("wallpaper_colors", false))
+
+    /** Opt-in Material You colours; the DESIGN.md brand palette is the default. */
+    val wallpaperColors: StateFlow<Boolean> = _wallpaperColors.asStateFlow()
+
+    fun setWallpaperColors(on: Boolean) {
+        prefs.edit().putBoolean("wallpaper_colors", on).apply()
+        _wallpaperColors.value = on
+    }
 
     fun setMainCurrency(code: String) {
         prefs.edit().putString(KEY_MAIN, code).apply()

@@ -21,11 +21,14 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
@@ -43,6 +46,7 @@ import com.oinky.app.ui.day.DayScreen
 import com.oinky.app.ui.insights.InsightsScreen
 import com.oinky.app.ui.recurring.RecurringScreen
 import com.oinky.app.ui.settings.SettingsScreen
+import com.oinky.app.ui.components.ProvideMoodFaces
 import com.oinky.app.ui.theme.OinkyTheme
 import com.oinky.app.ui.trips.TripDetailScreen
 import com.oinky.app.ui.trips.TripsScreen
@@ -66,9 +70,13 @@ class MainActivity : ComponentActivity() {
                 .launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
+        val settings = (application as OinkyApp).container.settings
         setContent {
-            OinkyTheme {
-                AppNav(pendingDestination.value) { pendingDestination.value = null }
+            val wallpaper by settings.wallpaperColors.collectAsState()
+            OinkyTheme(wallpaperColors = wallpaper) {
+                ProvideMoodFaces {
+                    AppNav(pendingDestination.value) { pendingDestination.value = null }
+                }
             }
         }
     }
@@ -112,7 +120,7 @@ private fun AppNav(destination: String?, onDestinationHandled: () -> Unit) {
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
             if (tabs.any { it.route == currentRoute }) {
-                NavigationBar {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
                     tabs.forEach { tab ->
                         NavigationBarItem(
                             selected = currentRoute == tab.route,
@@ -124,6 +132,11 @@ private fun AppNav(destination: String?, onDestinationHandled: () -> Unit) {
                                 }
                             },
                             icon = { Icon(tab.icon, contentDescription = null) },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                             label = { Text(tab.label) },
                         )
                     }

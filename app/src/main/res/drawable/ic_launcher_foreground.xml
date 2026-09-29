@@ -9,7 +9,7 @@
     <!-- legs -->
     <path android:fillColor="#F06A95" android:pathData="M38,68h8v12h-8z M62,68h8v12h-8z" />
     <!-- body -->
-    <path android:fillColor="#F78FB0" android:pathData="M54,56m-24,0a24,20 0,1 1,48 0a24,20 0,1 1,-48 0" />
+    <path android:fillColor="#F48FB1" android:pathData="M54,56m-24,0a24,20 0,1 1,48 0a24,20 0,1 1,-48 0" />
     <!-- snout -->
     <path android:fillColor="#F06A95" android:pathData="M76,58m-7,0a7,6 0,1 1,14 0a7,6 0,1 1,-14 0" />
     <path android:fillColor="#B8436A" android:pathData="M74,58m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0 M79,58m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />

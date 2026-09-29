@@ -39,7 +39,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.oinky.app.AppContainer
 import com.oinky.app.ui.components.containerViewModel
+import com.oinky.app.ui.components.HeroCard
+import com.oinky.app.ui.components.MoodIcon
+import com.oinky.app.ui.components.PaperCard
 import com.oinky.app.ui.components.money
+import com.oinky.app.ui.components.moodFace
+import com.oinky.app.ui.theme.Tokens
 import com.oinky.core.Category
 import com.oinky.core.DaySummary
 import com.oinky.core.MoodInsights
@@ -126,8 +131,8 @@ fun InsightsScreen() {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Card(Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(16.dp)) {
+                HeroCard(Modifier.fillMaxWidth()) {
+                    Row {
                         Stat("Spent", money(s.spent, s.main), Modifier.weight(1f))
                         Stat("Income", money(s.income, s.main), Modifier.weight(1f))
                         Stat("Net", money(s.income - s.spent, s.main), Modifier.weight(1f))
@@ -141,7 +146,8 @@ fun InsightsScreen() {
                     val max = s.byMood.maxOfOrNull { it.averageSpent } ?: BigDecimal.ONE
                     s.byMood.forEach { m ->
                         BarRow(
-                            leading = m.mood.emoji, label = "${m.days} days",
+                            leading = { MoodIcon(m.mood.score, 28.dp) },
+                            label = "${moodFace(m.mood.score)?.label ?: m.mood.label} · ${m.days} days",
                             value = "${money(m.averageSpent, s.main)}/day", fraction = fraction(m.averageSpent, max),
                         )
                     }
@@ -152,7 +158,7 @@ fun InsightsScreen() {
                     if (s.byCategory.isEmpty()) Text("No spending this month yet.")
                     val max = s.byCategory.firstOrNull()?.second ?: BigDecimal.ONE
                     s.byCategory.forEach { (cat, amt) ->
-                        BarRow(cat.emoji, cat.label, money(amt, s.main), fraction(amt, max))
+                        BarRow({ Text(cat.emoji, fontSize = 20.sp) }, cat.label, money(amt, s.main), fraction(amt, max))
                     }
                 }
             }
@@ -178,21 +184,21 @@ private fun fraction(v: BigDecimal, max: BigDecimal) =
 @Composable
 private fun Stat(label: String, value: String, modifier: Modifier) = Column(modifier) {
     Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(value, style = Tokens.Type.amountMd)
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) = Card(Modifier.fillMaxWidth()) {
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
+private fun Section(title: String, content: @Composable () -> Unit) = PaperCard(Modifier.fillMaxWidth()) {
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.Space.sm)) {
+        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = Tokens.Space.xs))
         content()
     }
 }
 
 @Composable
-private fun BarRow(leading: String, label: String, value: String, fraction: Float) {
+private fun BarRow(leading: @Composable () -> Unit, label: String, value: String, fraction: Float) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(leading, fontSize = 20.sp, modifier = Modifier.width(32.dp))
+        Box(Modifier.width(36.dp)) { leading() }
         Column(Modifier.weight(1f)) {
             Row {
                 Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))

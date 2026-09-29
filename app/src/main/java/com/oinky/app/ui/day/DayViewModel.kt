@@ -4,7 +4,9 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.oinky.app.AppContainer
+import com.oinky.app.data.DaySticker
 import com.oinky.app.data.PhotoEntity
+import com.oinky.app.data.StickerEntity
 import com.oinky.app.data.QuickPreview
 import com.oinky.app.data.RecurringEntity
 import com.oinky.app.data.TripEntity
@@ -44,6 +46,7 @@ data class DayUiState(
     val trip: TripEntity? = null,
     /** Trips the editor can link an entry to (all trips, current one first). */
     val trips: List<TripEntity> = emptyList(),
+    val stickers: List<DaySticker> = emptyList(),
 ) {
     val tripDay: Int? get() = trip?.range?.dayNumber(date)
 
@@ -65,12 +68,12 @@ class DayViewModel(private val c: AppContainer, epochDay: Long) : ViewModel() {
 
     val state: StateFlow<DayUiState> = combine(
         c.ledger.observeDay(epochDay),
-        c.ledger.observePhotos(epochDay),
+        combine(c.ledger.observePhotos(epochDay), c.stickers.observeDay(epochDay)) { p, st -> p to st },
         c.ledger.observeTxns(epochDay),
         c.settings.mainCurrency,
         combine(c.trips.observeTripOn(epochDay), c.trips.observeTrips()) { t, all -> t to all },
-    ) { day, photos, txns, main, (trip, all) ->
-        DayUiState(date, day?.mood, photos, txns, main, trip, all.sortedByDescending { it.id == trip?.id })
+    ) { day, (photos, stickers), txns, main, (trip, all) ->
+        DayUiState(date, day?.mood, photos, txns, main, trip, all.sortedByDescending { it.id == trip?.id }, stickers)
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayUiState(date))
 
@@ -124,6 +127,10 @@ class DayViewModel(private val c: AppContainer, epochDay: Long) : ViewModel() {
     }
 
     fun deletePhoto(photo: PhotoEntity) = viewModelScope.launch { c.ledger.deletePhoto(photo) }
+
+    fun stick(sticker: StickerEntity) = viewModelScope.launch { c.stickers.stick(date.toEpochDay(), sticker) }
+
+    fun unstick(sticker: DaySticker) = viewModelScope.launch { c.stickers.unstick(sticker) }
 
     /** Saves the quick entry straight away; the snackbar offers undo / edit. */
     fun submitQuick() = viewModelScope.launch {

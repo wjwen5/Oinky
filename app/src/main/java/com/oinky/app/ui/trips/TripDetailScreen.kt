@@ -73,6 +73,7 @@ import com.oinky.app.data.TripEntity
 import com.oinky.app.data.TripPlaceEntity
 import com.oinky.app.data.TxnEntity
 import com.oinky.app.ui.components.containerViewModel
+import com.oinky.app.ui.components.MoodIcon
 import com.oinky.app.ui.components.money
 import com.oinky.app.ui.theme.incomeColor
 import com.oinky.core.Countries
@@ -204,7 +205,7 @@ fun TripDetailScreen(tripId: Long, onBack: () -> Unit, onOpenDay: (LocalDate) ->
         } else LazyColumn(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Cover(trip, s.photos.firstOrNull()?.path) }
             item {
-                Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = MaterialTheme.shapes.large) {
                     WorldMap(
                         world = s.world,
                         fills = s.places.associate { it.countryCode to scheme.primary },
@@ -320,12 +321,12 @@ private fun Cover(trip: TripEntity, fallbackPhoto: String?) {
 
 @Composable
 private fun MoneyCard(st: TripStats, budget: java.math.BigDecimal?, main: String, trip: TripEntity) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    com.oinky.app.ui.components.PaperCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp), padded = false) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row {
                 Column(Modifier.weight(1f)) {
                     Text("Spent", style = MaterialTheme.typography.labelMedium)
-                    Text(money(st.spent, main), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(money(st.spent, main), style = com.oinky.app.ui.theme.Tokens.Type.amountLg)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Per day", style = MaterialTheme.typography.labelMedium)
@@ -392,7 +393,7 @@ private fun JournalRow(day: JournalDay, main: String, onClick: () -> Unit) {
     ) {
         Column(Modifier.width(56.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Day ${day.dayNumber}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            Text(day.entry?.mood?.emoji ?: "·", fontSize = 28.sp)
+            MoodIcon(day.entry?.moodScore, 32.dp, fallback = "·")
         }
         Column(Modifier.weight(1f)) {
             Row {

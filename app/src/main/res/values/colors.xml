@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mirrors DESIGN.md so the window matches the Compose page before the first frame. -->
+<resources>
+    <color name="paper">#FFF8F1</color>
+    <color name="ink">#3A2A2E</color>
+</resources>

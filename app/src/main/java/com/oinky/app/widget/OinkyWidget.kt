@@ -2,6 +2,15 @@ package com.oinky.app.widget
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.layout.size
+import androidx.glance.material3.ColorProviders
+import com.oinky.app.ui.theme.DarkScheme
+import com.oinky.app.ui.theme.LightScheme
+import com.oinky.core.MoodFace
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,7 +71,14 @@ data class WidgetData(
     val mainCurrency: String = "SGD",
     val trip: TripEntity? = null,
     val tripFlag: String? = null,
+    /** The user's mood faces, best first; sticker faces carry a small decoded bitmap. */
+    val faces: List<WidgetFace> = Mood.entries.map { WidgetFace(MoodFace.default(it), null) },
 )
+
+data class WidgetFace(val face: MoodFace, val bitmap: Bitmap?)
+
+/** DESIGN.md colours for the widget (brand palette in light and dark). */
+private val WidgetColors = ColorProviders(light = LightScheme, dark = DarkScheme)
 
 /**
  * Home-screen widget: today's spending and mood at a glance, a pill that opens the floating
@@ -75,7 +91,7 @@ class OinkyWidget : GlanceAppWidget() {
         val data = todayFlow(context, today)
         provideContent {
             val state by remember { data }.collectAsState(initial = WidgetData(today))
-            GlanceTheme { Content(state) }
+            GlanceTheme(colors = WidgetColors) { Content(state) }
         }
     }
 
@@ -89,12 +105,16 @@ class OinkyWidget : GlanceAppWidget() {
                 trip to (places.firstOrNull()?.let { Countries.flag(it.countryCode) } ?: trip.emoji)
             }
         }
+        val faces = c.settings.moodFaces.map { list ->
+            list.sortedByDescending { it.score }.map { f -> WidgetFace(f, f.stickerPath?.let { decodeSmall(it) }) }
+        }
         return combine(
             c.ledger.observeDay(day),
             c.ledger.observeTxns(day),
             c.settings.mainCurrency,
             tripWithFlag,
-        ) { entry, txns, main, (trip, flag) ->
+            faces,
+        ) { entry, txns, main, (trip, flag), widgetFaces ->
             WidgetData(
                 date = today,
                 mood = entry?.mood,
@@ -103,6 +123,7 @@ class OinkyWidget : GlanceAppWidget() {
                 mainCurrency = main,
                 trip = trip,
                 tripFlag = flag,
+                faces = widgetFaces,
             )
         }
     }
@@ -158,7 +179,8 @@ class OinkyWidget : GlanceAppWidget() {
 
             // One-tap mood for today.
             Row(modifier = GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                Mood.entries.forEach { m ->
+                d.faces.forEach { wf ->
+                    val m = Mood.fromScore(wf.face.score) ?: return@forEach
                     val selected = m == d.mood
                     Box(
                         modifier = GlanceModifier.defaultWeight()
@@ -167,7 +189,14 @@ class OinkyWidget : GlanceAppWidget() {
                             .clickable(actionRunCallback<SetMoodAction>(actionParametersOf(SetMoodAction.scoreKey to m.score))),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(m.emoji, style = TextStyle(fontSize = if (selected) 24.sp else 20.sp))
+                        if (wf.bitmap != null) {
+                            Image(
+                                ImageProvider(wf.bitmap), contentDescription = wf.face.label,
+                                modifier = GlanceModifier.size(if (selected) 30.dp else 26.dp),
+                            )
+                        } else {
+                            Text(wf.face.emoji, style = TextStyle(fontSize = if (selected) 24.sp else 20.sp))
+                        }
                     }
                 }
             }
@@ -181,6 +210,15 @@ class OinkyWidget : GlanceAppWidget() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
     )
 }
+
+/** Widgets travel as RemoteViews bitmaps, so sticker faces are decoded small (~96px). */
+private fun decodeSmall(path: String): Bitmap? = runCatching {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 96) sample *= 2
+    BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+}.getOrNull()
 
 /** Sets (or clears, when tapped again) today's mood straight from the widget. */
 class SetMoodAction : ActionCallback {

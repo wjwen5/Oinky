@@ -142,6 +142,29 @@ interface TripDao {
 }
 
 @Dao
+interface StickerDao {
+    @Query("SELECT * FROM stickers ORDER BY createdAt DESC")
+    fun observeLibrary(): Flow<List<StickerEntity>>
+
+    @Insert suspend fun insert(sticker: StickerEntity): Long
+    @Delete suspend fun delete(sticker: StickerEntity)
+
+    @Query(
+        "SELECT ds.id, ds.epochDay, ds.stickerId, ds.rotation, s.path FROM day_stickers ds " +
+            "JOIN stickers s ON s.id = ds.stickerId WHERE ds.epochDay BETWEEN :from AND :to ORDER BY ds.createdAt",
+    )
+    fun observeDayStickers(from: Long, to: Long): Flow<List<DaySticker>>
+
+    @Insert suspend fun stick(daySticker: DayStickerEntity): Long
+
+    @Query("DELETE FROM day_stickers WHERE id = :id")
+    suspend fun unstick(id: Long)
+
+    @Query("DELETE FROM day_stickers WHERE stickerId = :stickerId")
+    suspend fun unstickEverywhere(stickerId: Long)
+}
+
+@Dao
 interface RecurringDao {
     @Query("SELECT * FROM recurring_rules ORDER BY active DESC, name")
     fun observeAll(): Flow<List<RecurringEntity>>
@@ -181,6 +204,7 @@ interface CategoryRuleDao {
     entities = [
         DayEntry::class, PhotoEntity::class, TxnEntity::class, RecurringEntity::class,
         RateEntity::class, CategoryRule::class, TripEntity::class, TripPlaceEntity::class,
+        StickerEntity::class, DayStickerEntity::class,
     ],
     version = 1,
     exportSchema = false,
@@ -194,6 +218,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun rates(): RateDao
     abstract fun categoryRules(): CategoryRuleDao
     abstract fun trips(): TripDao
+    abstract fun stickers(): StickerDao
 
     companion object {
         fun build(context: Context): AppDatabase =
