@@ -8,6 +8,7 @@ import com.moodledger.core.Frequency
 import com.moodledger.core.Mood
 import com.moodledger.core.RecurringMode
 import com.moodledger.core.Schedule
+import com.moodledger.core.TripRange
 import com.moodledger.core.TxnType
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -36,7 +37,7 @@ data class PhotoEntity(
     val createdAt: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "transactions", indices = [Index("epochDay"), Index("recurringId")])
+@Entity(tableName = "transactions", indices = [Index("epochDay"), Index("recurringId"), Index("tripId")])
 data class TxnEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val epochDay: Long,
@@ -54,6 +55,7 @@ data class TxnEntity(
     val merchant: String? = null,
     val recurringId: Long? = null,
     val receiptPath: String? = null,
+    val tripId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
 ) {
     val amount: BigDecimal get() = amountMinor.fromMinor()
@@ -105,4 +107,37 @@ data class RateEntity(
 data class CategoryRule(
     @PrimaryKey val phrase: String,
     val category: Category,
+)
+
+@Entity(tableName = "trips")
+data class TripEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val emoji: String = "✈️",
+    val startEpochDay: Long,
+    val endEpochDay: Long,
+    /** Default currency for quick entries made on trip days, e.g. JPY in Japan. */
+    val localCurrency: String,
+    val budgetMinor: Long? = null,
+    val budgetCurrency: String? = null,
+    val coverPhotoPath: String? = null,
+    val note: String = "",
+    val createdAt: Long = System.currentTimeMillis(),
+) {
+    val start: LocalDate get() = LocalDate.ofEpochDay(startEpochDay)
+    val end: LocalDate get() = LocalDate.ofEpochDay(endEpochDay)
+    val range: TripRange get() = TripRange(id, start, end)
+    val budget: BigDecimal? get() = budgetMinor?.fromMinor()
+}
+
+/** A stop on a trip: a city from the geocoder, or a whole country picked from the map list. */
+@Entity(tableName = "trip_places", indices = [Index("tripId")])
+data class TripPlaceEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val tripId: Long,
+    val name: String,
+    val countryCode: String,
+    val lat: Double,
+    val lon: Double,
+    val createdAt: Long = System.currentTimeMillis(),
 )

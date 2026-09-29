@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.moodledger.app.AppContainer
 import com.moodledger.app.data.RecurringEntity
 import com.moodledger.core.Category
+import com.moodledger.core.Countries
+import com.moodledger.core.TripMath
 import com.moodledger.core.Mood
 import com.moodledger.core.TxnType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,6 +34,8 @@ data class DayCell(
     val notePreview: String,
     val photoPath: String?,
     val txnCount: Int,
+    /** Flag (or trip emoji) when the day belongs to a trip. */
+    val tripMark: String? = null,
 )
 
 data class MissedItem(val rule: RecurringEntity, val due: LocalDate, val daysOverdue: Long)
@@ -72,8 +76,11 @@ class CalendarViewModel(private val c: AppContainer) : ViewModel() {
                 c.ledger.observeTxns(from.toEpochDay(), to.toEpochDay()),
                 c.ledger.observePhotos(from.toEpochDay(), to.toEpochDay()),
                 c.settings.mainCurrency,
-                missed,
-            ) { days, txns, photos, main, missedList ->
+                combine(missed, c.trips.observeTrips(), c.trips.observeAllPlaces()) { m, t, p -> Triple(m, t, p) },
+            ) { days, txns, photos, main, (missedList, trips, places) ->
+                val firstPlace = places.groupBy { it.tripId }.mapValues { (_, l) -> l.first() }
+                val ranges = trips.map { it.range }
+                val tripById = trips.associateBy { it.id }
                 val dayMap = days.associateBy { it.date }
                 val txnsByDay = txns.groupBy { LocalDate.ofEpochDay(it.epochDay) }
                 val photoByDay = photos.groupBy { LocalDate.ofEpochDay(it.epochDay) }
@@ -87,6 +94,9 @@ class CalendarViewModel(private val c: AppContainer) : ViewModel() {
                         notePreview = dayMap[d]?.note.orEmpty().trim(),
                         photoPath = photoByDay[d]?.firstOrNull()?.path,
                         txnCount = dayTxns.size,
+                        tripMark = TripMath.tripOn(ranges, d)?.let { r ->
+                            firstPlace[r.id]?.let { Countries.flag(it.countryCode) } ?: tripById[r.id]?.emoji
+                        },
                     )
                 }
                 val inPeriod = { d: LocalDate -> !d.isBefore(periodFrom) && !d.isAfter(periodTo) }

@@ -89,6 +89,59 @@ interface TxnDao {
 }
 
 @Dao
+interface TripDao {
+    @Query("SELECT * FROM trips ORDER BY startEpochDay DESC")
+    fun observeAll(): Flow<List<TripEntity>>
+
+    @Query("SELECT * FROM trips")
+    suspend fun all(): List<TripEntity>
+
+    @Query("SELECT * FROM trips WHERE id = :id")
+    fun observe(id: Long): Flow<TripEntity?>
+
+    @Query("SELECT * FROM trips WHERE id = :id")
+    suspend fun get(id: Long): TripEntity?
+
+    @Query("SELECT * FROM trips WHERE :day BETWEEN startEpochDay AND endEpochDay ORDER BY startEpochDay DESC LIMIT 1")
+    suspend fun covering(day: Long): TripEntity?
+
+    @Query("SELECT * FROM trips WHERE :day BETWEEN startEpochDay AND endEpochDay ORDER BY startEpochDay DESC LIMIT 1")
+    fun observeCovering(day: Long): Flow<TripEntity?>
+
+    @Insert suspend fun insert(trip: TripEntity): Long
+    @Update suspend fun update(trip: TripEntity)
+    @Delete suspend fun delete(trip: TripEntity)
+
+    @Query("SELECT * FROM trip_places ORDER BY createdAt")
+    fun observeAllPlaces(): Flow<List<TripPlaceEntity>>
+
+    @Query("SELECT * FROM trip_places WHERE tripId = :tripId ORDER BY createdAt")
+    fun observePlaces(tripId: Long): Flow<List<TripPlaceEntity>>
+
+    @Insert suspend fun insertPlace(place: TripPlaceEntity): Long
+    @Delete suspend fun deletePlace(place: TripPlaceEntity)
+
+    @Query("DELETE FROM trip_places WHERE tripId = :tripId")
+    suspend fun deletePlacesOf(tripId: Long)
+
+    /** Link untagged entries inside the trip dates, and release entries that fell outside them. */
+    @Query("UPDATE transactions SET tripId = :tripId WHERE tripId IS NULL AND epochDay BETWEEN :from AND :to")
+    suspend fun claimTxns(tripId: Long, from: Long, to: Long)
+
+    @Query("UPDATE transactions SET tripId = NULL WHERE tripId = :tripId AND (epochDay < :from OR epochDay > :to)")
+    suspend fun releaseTxnsOutside(tripId: Long, from: Long, to: Long)
+
+    @Query("UPDATE transactions SET tripId = NULL WHERE tripId = :tripId")
+    suspend fun releaseAllTxns(tripId: Long)
+
+    @Query("SELECT * FROM transactions WHERE tripId = :tripId ORDER BY epochDay, createdAt")
+    fun observeTxns(tripId: Long): Flow<List<TxnEntity>>
+
+    @Query("SELECT * FROM transactions WHERE tripId IS NOT NULL")
+    fun observeAllTripTxns(): Flow<List<TxnEntity>>
+}
+
+@Dao
 interface RecurringDao {
     @Query("SELECT * FROM recurring_rules ORDER BY active DESC, name")
     fun observeAll(): Flow<List<RecurringEntity>>
@@ -127,7 +180,7 @@ interface CategoryRuleDao {
 @Database(
     entities = [
         DayEntry::class, PhotoEntity::class, TxnEntity::class, RecurringEntity::class,
-        RateEntity::class, CategoryRule::class,
+        RateEntity::class, CategoryRule::class, TripEntity::class, TripPlaceEntity::class,
     ],
     version = 1,
     exportSchema = false,
@@ -140,6 +193,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recurring(): RecurringDao
     abstract fun rates(): RateDao
     abstract fun categoryRules(): CategoryRuleDao
+    abstract fun trips(): TripDao
 
     companion object {
         fun build(context: Context): AppDatabase =

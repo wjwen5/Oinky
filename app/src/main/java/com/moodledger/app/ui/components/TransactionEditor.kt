@@ -36,6 +36,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.moodledger.app.data.TripEntity
 import com.moodledger.app.data.TxnDraft
 import com.moodledger.core.Category
 import com.moodledger.core.Frequency
@@ -56,6 +57,7 @@ fun TransactionEditorDialog(
     onDismiss: () -> Unit,
     onSave: (TxnDraft, Frequency?) -> Unit,
     onDelete: (() -> Unit)? = null,
+    trips: List<TripEntity> = emptyList(),
 ) {
     var type by remember { mutableStateOf(initial.type) }
     var amountText by remember {
@@ -66,6 +68,8 @@ fun TransactionEditorDialog(
     var note by remember { mutableStateOf(initial.note) }
     var merchant by remember { mutableStateOf(initial.merchant.orEmpty()) }
     var repeat by remember { mutableStateOf<Frequency?>(null) }
+    var tripId by remember { mutableStateOf(initial.tripId) }
+    var tripChosen by remember { mutableStateOf(initial.tripChosen) }
 
     val amount = amountText.replace(",", "").toBigDecimalOrNull()
     val valid = amount != null && amount > BigDecimal.ZERO
@@ -128,6 +132,21 @@ fun TransactionEditorDialog(
                         )
                     }
                 }
+                if (trips.isNotEmpty()) {
+                    Text("Trip", style = MaterialTheme.typography.labelLarge)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilterChip(
+                            selected = tripId == null, onClick = { tripId = null; tripChosen = true },
+                            label = { Text("None") },
+                        )
+                        trips.take(5).forEach { t ->
+                            FilterChip(
+                                selected = tripId == t.id, onClick = { tripId = t.id; tripChosen = true },
+                                label = { Text("${t.emoji} ${t.name}") },
+                            )
+                        }
+                    }
+                }
                 if (initial.id == 0L && initial.recurringId == null) {
                     Text("Repeat", style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -152,6 +171,7 @@ fun TransactionEditorDialog(
                         initial.copy(
                             type = type, amount = amount!!, currency = currency, category = category,
                             note = note, merchant = merchant.ifBlank { null },
+                            tripId = tripId, tripChosen = tripChosen,
                         ),
                         repeat,
                     )

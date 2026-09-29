@@ -21,4 +21,5 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    systemProperty("worldMapAsset", rootProject.file("app/src/main/assets/world_50m.txt").absolutePath)
 }

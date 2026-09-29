@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -43,6 +44,8 @@ import com.moodledger.app.ui.insights.InsightsScreen
 import com.moodledger.app.ui.recurring.RecurringScreen
 import com.moodledger.app.ui.settings.SettingsScreen
 import com.moodledger.app.ui.theme.MoodLedgerTheme
+import com.moodledger.app.ui.trips.TripDetailScreen
+import com.moodledger.app.ui.trips.TripsScreen
 import com.moodledger.app.work.Notifications
 import java.time.LocalDate
 
@@ -80,12 +83,14 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 
 private val tabs = listOf(
     Tab("calendar", "Diary", Icons.Filled.CalendarMonth),
+    Tab("trips", "Trips", Icons.Filled.Public),
     Tab("recurring", "Recurring", Icons.Filled.Repeat),
     Tab("insights", "Insights", Icons.Filled.Insights),
     Tab("settings", "Settings", Icons.Filled.Settings),
 )
 
 fun NavHostController.openDay(date: LocalDate) = navigate("day/${date.toEpochDay()}")
+fun NavHostController.openTrip(id: Long) = navigate("trip/$id")
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -136,8 +141,21 @@ private fun AppNav(destination: String?, onDestinationHandled: () -> Unit) {
                     epochDay = entry.arguments!!.getLong("epochDay"),
                     onBack = { nav.popBackStack() },
                     onOpenDay = { date ->
-                        nav.navigate("day/${date.toEpochDay()}") { popUpTo("calendar") }
+                        // Swap the current day page instead of stacking one per swipe.
+                        nav.navigate("day/${date.toEpochDay()}") { popUpTo("day/{epochDay}") { inclusive = true } }
                     },
+                    onOpenTrip = nav::openTrip,
+                )
+            }
+            composable("trips") { TripsScreen(onOpenTrip = nav::openTrip) }
+            composable(
+                "trip/{tripId}",
+                arguments = listOf(navArgument("tripId") { type = NavType.LongType }),
+            ) { entry ->
+                TripDetailScreen(
+                    tripId = entry.arguments!!.getLong("tripId"),
+                    onBack = { nav.popBackStack() },
+                    onOpenDay = nav::openDay,
                 )
             }
             composable("recurring") { RecurringScreen() }

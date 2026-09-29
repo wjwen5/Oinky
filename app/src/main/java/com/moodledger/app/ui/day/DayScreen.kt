@@ -91,7 +91,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit) {
+fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit, onOpenTrip: (Long) -> Unit = {}) {
     val vm = containerViewModel(key = "day-$epochDay") { DayViewModel(it, epochDay) }
     val s by vm.state.collectAsStateWithLifecycle()
     val note by vm.note.collectAsStateWithLifecycle()
@@ -154,6 +154,7 @@ fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             QuickEntryBar(
+                tripCurrency = s.trip?.localCurrency?.takeIf { it != s.mainCurrency },
                 text = quick,
                 preview = preview,
                 scanning = scanning,
@@ -169,6 +170,15 @@ fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit
             Modifier.fillMaxSize().padding(padding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            s.trip?.let { trip ->
+                item {
+                    AssistChip(
+                        onClick = { onOpenTrip(trip.id) },
+                        label = { Text("${trip.emoji} Day ${s.tripDay} of ${trip.name} · amounts default to ${trip.localCurrency}") },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
             item { MoodPicker(s.mood, vm::setMood) }
             item {
                 OutlinedTextField(
@@ -220,6 +230,7 @@ fun DayScreen(epochDay: Long, onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit
             onDismiss = vm::cancelEditor,
             onSave = { d, repeat -> vm.save(d, repeat) },
             onDelete = if (existing != null) ({ vm.delete(existing) }) else null,
+            trips = s.trips,
         )
     }
 }
@@ -317,6 +328,7 @@ private fun TxnRow(t: TxnEntity, main: String, onClick: () -> Unit) {
 
 @Composable
 private fun QuickEntryBar(
+    tripCurrency: String?,
     text: String,
     preview: QuickPreview?,
     scanning: Boolean,
@@ -371,7 +383,7 @@ private fun QuickEntryBar(
                 TextField(
                     value = text,
                     onValueChange = onTextChange,
-                    placeholder = { Text("rm135 on dinner") },
+                    placeholder = { Text(if (tripCurrency != null) "1500 ramen ($tripCurrency)" else "rm135 on dinner") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { onSubmit() }),

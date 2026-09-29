@@ -36,6 +36,9 @@ data class TxnDraft(
     val receiptPath: String? = null,
     /** The category the app guessed; if the user changes it we learn the correction. */
     val suggestedCategory: Category? = null,
+    val tripId: Long? = null,
+    /** False: link to whichever trip covers [date]. True: [tripId] was picked (null = no trip). */
+    val tripChosen: Boolean = false,
 )
 
 class LedgerRepository(
@@ -90,8 +93,11 @@ class LedgerRepository(
     suspend fun classifier(): CategoryClassifier =
         CategoryClassifier(db.categoryRules().all().associate { it.phrase to it.category })
 
-    suspend fun quickParser(pageDate: LocalDate): QuickEntryParser =
-        QuickEntryParser(settings.mainCurrency.value, classifier(), today = { pageDate })
+    /** On a trip day, amounts without a currency default to the trip's local currency. */
+    suspend fun quickParser(pageDate: LocalDate): QuickEntryParser {
+        val trip = db.trips().covering(pageDate.toEpochDay())
+        return QuickEntryParser(trip?.localCurrency ?: settings.mainCurrency.value, classifier(), today = { pageDate })
+    }
 
     suspend fun saveTxn(draft: TxnDraft): Long {
         val base = settings.mainCurrency.value
@@ -111,6 +117,7 @@ class LedgerRepository(
             merchant = draft.merchant?.trim()?.takeIf { it.isNotEmpty() },
             recurringId = draft.recurringId,
             receiptPath = draft.receiptPath,
+            tripId = if (draft.tripChosen) draft.tripId else db.trips().covering(draft.date.toEpochDay())?.id,
         )
         learnCategory(draft)
         return if (draft.id == 0L) {

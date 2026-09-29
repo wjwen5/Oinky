@@ -14,6 +14,17 @@ An Android app (Kotlin + Jetpack Compose) that works like a diary. Each day you 
 | **"You haven't recorded X" reminders** | **Remind me** rules have a grace period and match words. An occurrence counts as paid if an entry mentioning it falls anywhere from half a period early to just before the next due date. Overdue items show as banners on the calendar (**Record** / **Skip**) and as a notification at most once a day. |
 | **Receipt OCR** | Take a photo or pick one from the gallery. ML Kit reads it on the device, the app rebuilds the rows so amounts line up with their labels, and a parser finds the total, currency, merchant, date and category. You then check and confirm the result in the editor. |
 
+### Trips & world map
+
+| | |
+|---|---|
+| **World map** | A map built into the app from Natural Earth country outlines (public domain), so it needs no Google Maps key and works offline. Countries you've visited are filled in, and every trip place gets a pin. Pinch to zoom, drag to pan, double-tap to zoom in. Tap a country to filter your trips to it; tap a pin to open that trip. |
+| **Travel stats** | Countries, continents, trips and days away. Overlapping trips aren't counted twice, and your home country (worked out from your main currency) is excluded. |
+| **Trips** | Each trip has a name, emoji, date range, local currency, optional budget, notes and cover photo. Places come from a country search (works offline) or a city search using the phone's built-in geocoder (needs internet). Adding the first place switches the trip's currency to that country's currency. |
+| **Expenses per trip** | Any entry dated inside a trip is linked to it automatically, and you can change the trip in the editor. On trip days, quick entries default to the local currency, so `1500 ramen` in Japan is read as ¥1,500. The trip page shows total spent, spending per day, budget used and how much you can still spend per day, spending by category, and the currencies you paid in. |
+| **Travel journal** | Each trip day shows its mood, note, spending and photos. The calendar marks trip days with the country's flag, and a day's page shows "Day 3 of Japan". |
+| **Photos** | Diary photos from trip days collect in the trip's photo gallery. **Add photos** on a trip imports many at once and files each one on the day it was taken (from the photo's date data). |
+
 Extras already built in:
 - **Learns your categories.** If you change a suggested category, the app remembers that phrase or merchant for next time.
 - **Spots recurring patterns.** If you log something like "haircut" about once a month by hand, the Recurring tab offers to track it.
@@ -38,17 +49,20 @@ coffee 6.8 @starbucks      → merchant (also "at starbucks")
 ## Architecture
 
 ```
-core/   Pure Kotlin/JVM, unit-tested (25 tests)
+core/   Pure Kotlin/JVM, unit-tested (35 tests)
   QuickEntryParser   free text → amount/currency/category/date/merchant
   CategoryClassifier keyword table (MY/SG merchants included) + learned overrides
   Currencies/RateTable  alias resolution, cross-rate conversion, formatting
   Schedule, MissedPaymentDetector, RecurrenceDetector
   ReceiptParser      OCR text → total/currency/merchant/date
   MoodInsights       spending by mood + headline
+  WorldMapData, Mercator, Countries   map outlines, hit-testing, flags, local currency
+  TripMath           trip stats, budget pace, travel summary, photo-to-day filing
 app/    Android
   data/     Room (days, photos, transactions, recurring rules, rates, learned categories)
   rates/    ExchangeRateRepository (HTTP + cache + historical)
   ocr/      ML Kit text recognition, rebuilds rows from bounding boxes
+  assets/world_50m.txt  simplified country outlines (278 KB, 239 countries)
   work/     DailyWorker (rates, offline conversions, auto-record, missed reminders, diary nudge)
   ui/       Compose screens: calendar, day, recurring, insights, settings
 ```
@@ -60,7 +74,7 @@ Money is stored as fixed-point hundredths (`Long`), with both the original amoun
 Requirements: Android Studio (Ladybug or newer) or JDK 17+ with the Android SDK (API 35).
 
 ```bash
-./gradlew :core:test          # parser / recurrence / receipt tests (no Android needed)
+./gradlew :core:test          # parser / recurrence / receipt / map / trip tests (no Android needed)
 ./gradlew :app:installDebug   # build and install on a device/emulator
 ```
 
@@ -82,7 +96,7 @@ Minimum Android version is 8.0 (API 26).
 2. **Voice entry.** Speech-to-text into the same quick-entry parser ("forty ringgit grab to KLCC").
 3. **LLM fallback for the parser.** Keep the fast offline rules, and send only the entries they can't parse (or messy receipts) to an LLM to extract structured data, with the user's permission.
 4. **Spending "why" tags.** A one-tap reason on each purchase (bored / treat / need / social) turns mood × money into advice you can act on, which is the core idea of Mindspend.
-5. **Trips.** Group days into a trip, show a budget in the local currency, and sum up per-trip spending in your main currency.
+5. ~~Trips~~ (done). Next steps: offline map tiles or a city-level map (osmdroid/MapLibre) for zooming into a trip, a route line joining places in order, and a shareable trip recap image.
 6. **Budgets and gentle limits**, per category and per mood ("you tend to overspend on 😔 days, want a soft cap?").
 7. **Home-screen widget** that shows today's mood picker and a quick-entry field.
 8. **On This Day.** Resurface past entries and photos, as Day One and Daylio do, so people come back to the app.

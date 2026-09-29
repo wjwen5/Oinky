@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.moodledger.app.AppContainer
 import com.moodledger.app.data.PhotoEntity
 import com.moodledger.app.data.RecurringEntity
+import com.moodledger.app.data.TripEntity
 import com.moodledger.app.data.TxnDraft
 import com.moodledger.app.data.TxnEntity
 import com.moodledger.app.data.toMinor
@@ -40,7 +41,12 @@ data class DayUiState(
     val photos: List<PhotoEntity> = emptyList(),
     val txns: List<TxnEntity> = emptyList(),
     val mainCurrency: String = "SGD",
+    val trip: TripEntity? = null,
+    /** Trips the editor can link an entry to (all trips, current one first). */
+    val trips: List<TripEntity> = emptyList(),
 ) {
+    val tripDay: Int? get() = trip?.range?.dayNumber(date)
+
     val spent: BigDecimal get() = txns.filter { it.type == TxnType.EXPENSE }.fold(BigDecimal.ZERO) { a, t -> a + t.baseAmount }
     val income: BigDecimal get() = txns.filter { it.type == TxnType.INCOME }.fold(BigDecimal.ZERO) { a, t -> a + t.baseAmount }
 }
@@ -64,7 +70,10 @@ class DayViewModel(private val c: AppContainer, epochDay: Long) : ViewModel() {
         c.ledger.observePhotos(epochDay),
         c.ledger.observeTxns(epochDay),
         c.settings.mainCurrency,
-    ) { day, photos, txns, main -> DayUiState(date, day?.mood, photos, txns, main) }
+        combine(c.trips.observeTripOn(epochDay), c.trips.observeTrips()) { t, all -> t to all },
+    ) { day, photos, txns, main, (trip, all) ->
+        DayUiState(date, day?.mood, photos, txns, main, trip, all.sortedByDescending { it.id == trip?.id })
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayUiState(date))
 
     private val _note = MutableStateFlow("")
@@ -143,7 +152,11 @@ class DayViewModel(private val c: AppContainer, epochDay: Long) : ViewModel() {
     }
 
     fun openNew() {
-        _editor.value = EditorRequest(TxnDraft(date = date, currency = c.settings.mainCurrency.value), "New entry")
+        val s = state.value
+        _editor.value = EditorRequest(
+            TxnDraft(date = date, currency = s.trip?.localCurrency ?: s.mainCurrency, tripId = s.trip?.id),
+            "New entry",
+        )
     }
 
     fun openEdit(txn: TxnEntity) {
@@ -152,6 +165,7 @@ class DayViewModel(private val c: AppContainer, epochDay: Long) : ViewModel() {
                 id = txn.id, date = LocalDate.ofEpochDay(txn.epochDay), type = txn.type, category = txn.category,
                 amount = txn.amount, currency = txn.currency, note = txn.note, merchant = txn.merchant,
                 recurringId = txn.recurringId, receiptPath = txn.receiptPath, suggestedCategory = txn.category,
+                tripId = txn.tripId, tripChosen = true,
             ),
             "Edit entry", txn,
         )
@@ -189,7 +203,7 @@ class DayViewModel(private val c: AppContainer, epochDay: Long) : ViewModel() {
         _scanning.value = true
         try {
             val file = c.ledger.copyToAppStorage(uri, "receipts")
-            val main = c.settings.mainCurrency.value
+            val main = state.value.trip?.localCurrency ?: c.settings.mainCurrency.value
             val (receipt, _) = c.scanner.scan(Uri.fromFile(file), c.ledger.classifier(), main)
             if (receipt.total == null) _events.emit(DayEvent.Message("Couldn't read a total — please fill it in"))
             _editor.value = EditorRequest(

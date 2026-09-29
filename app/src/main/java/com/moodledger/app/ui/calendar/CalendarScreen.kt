@@ -227,11 +227,14 @@ private fun MonthCell(cell: DayCell, inMonth: Boolean, maxSpent: BigDecimal, mod
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         val faded = if (inMonth) 1f else 0.35f
-        Text(
-            "${cell.date.dayOfMonth}", style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = faded),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "${cell.date.dayOfMonth}", style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = faded),
+            )
+            cell.tripMark?.let { Text(it, fontSize = 9.sp, modifier = Modifier.padding(start = 1.dp)) }
+        }
         Text(cell.mood?.emoji ?: if (cell.notePreview.isNotEmpty() || cell.photoPath != null) "📝" else "", fontSize = 22.sp)
         Text(
             if (cell.spent.signum() > 0) compact(cell.spent) else "",
@@ -254,6 +257,7 @@ private fun WeekRow(cell: DayCell, currency: String, onClick: () -> Unit) {
             Column(Modifier.width(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(cell.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()), style = MaterialTheme.typography.labelSmall)
                 Text("${cell.date.dayOfMonth}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                cell.tripMark?.let { Text(it, fontSize = 14.sp) }
             }
             Text(cell.mood?.emoji ?: "·", fontSize = 32.sp, modifier = Modifier.padding(horizontal = 8.dp))
             Column(Modifier.weight(1f)) {

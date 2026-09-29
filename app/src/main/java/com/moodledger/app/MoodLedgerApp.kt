@@ -5,6 +5,7 @@ import android.content.Context
 import com.moodledger.app.data.AppDatabase
 import com.moodledger.app.data.LedgerRepository
 import com.moodledger.app.data.Settings
+import com.moodledger.app.data.TripRepository
 import com.moodledger.app.ocr.ReceiptScanner
 import com.moodledger.app.rates.ExchangeRateRepository
 import com.moodledger.app.work.DailyWorker
@@ -21,6 +22,7 @@ class AppContainer(context: Context) {
     val settings = Settings(context)
     val rates = ExchangeRateRepository(db.rates())
     val ledger = LedgerRepository(context, db, rates, settings)
+    val trips = TripRepository(context, db, ledger)
     val scanner = ReceiptScanner(context)
 }
 
