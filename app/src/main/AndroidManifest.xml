@@ -6,13 +6,13 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
-        android:name=".MoodLedgerApp"
+        android:name=".OinkyApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MoodLedger">
+        android:theme="@style/Theme.Oinky">
 
         <activity
             android:name=".MainActivity"

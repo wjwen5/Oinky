@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MoodLedger"
+rootProject.name = "Oinky"
 include(":app", ":core")

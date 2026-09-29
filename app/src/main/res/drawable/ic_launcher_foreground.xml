@@ -1,14 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A notebook with a coin: diary + money. -->
+<!-- Oinky: a piggy bank with a coin going in. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#8A5A44"
-        android:pathData="M36,30h32a4,4 0,0 1,4 4v40a4,4 0,0 1,-4 4h-32a4,4 0,0 1,-4 -4v-40a4,4 0,0 1,4 -4z" />
-    <path android:fillColor="#FFFBF7"
-        android:pathData="M40,38h24v3h-24zM40,45h24v3h-24zM40,52h16v3h-16z" />
-    <path android:fillColor="#E0A526"
-        android:pathData="M70,64m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0" />
-    <path android:fillColor="#FFFBF7"
-        android:pathData="M68.5,57h3v14h-3z" />
+    <!-- ears -->
+    <path android:fillColor="#F06A95" android:pathData="M36,40 L40,27 L50,37 Z" />
+    <path android:fillColor="#F06A95" android:pathData="M58,37 L68,27 L72,40 Z" />
+    <!-- legs -->
+    <path android:fillColor="#F06A95" android:pathData="M38,68h8v12h-8z M62,68h8v12h-8z" />
+    <!-- body -->
+    <path android:fillColor="#F78FB0" android:pathData="M54,56m-24,0a24,20 0,1 1,48 0a24,20 0,1 1,-48 0" />
+    <!-- snout -->
+    <path android:fillColor="#F06A95" android:pathData="M76,58m-7,0a7,6 0,1 1,14 0a7,6 0,1 1,-14 0" />
+    <path android:fillColor="#B8436A" android:pathData="M74,58m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0 M79,58m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <!-- eye -->
+    <path android:fillColor="#4A2533" android:pathData="M64,49m-2.2,0a2.2,2.2 0,1 1,4.4 0a2.2,2.2 0,1 1,-4.4 0" />
+    <!-- coin slot and coin -->
+    <path android:fillColor="#B8436A" android:pathData="M47,37h14v3h-14z" />
+    <path android:fillColor="#F2B233" android:pathData="M54,29m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+    <!-- curly tail -->
+    <path android:strokeColor="#F06A95" android:strokeWidth="3" android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:pathData="M30,54 C24,54 24,47 28,47 C31,47 31,51 28,52" />
 </vector>

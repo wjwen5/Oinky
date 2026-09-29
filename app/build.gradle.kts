@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.moodledger.app"
+    namespace = "com.oinky.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.moodledger.app"
+        applicationId = "com.oinky.app"
         minSdk = 26 // java.time without desugaring
         targetSdk = 35
         versionCode = 1

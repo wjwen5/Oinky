@@ -1,4 +1,4 @@
-# MoodLedger: a diary with a wallet
+# Oinky 🐷: a diary with a wallet
 
 An Android app (Kotlin + Jetpack Compose) that works like a diary. Each day you pick a mood emoji, write a note, add photos, and log what you spent. All amounts are converted to one main currency using online exchange rates.
 
