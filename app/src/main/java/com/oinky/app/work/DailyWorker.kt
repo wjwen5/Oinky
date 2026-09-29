@@ -11,6 +11,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.oinky.app.OinkyApp
+import com.oinky.app.widget.WidgetRefresher
 import com.oinky.core.Currencies
 import java.time.LocalDate
 import java.time.LocalTime
@@ -63,6 +64,8 @@ class DailyWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                 c.settings.lastDiaryNudgeDay = today.toEpochDay()
             }
         }
+        // Keeps the widget's "today" current across midnight and after rate updates.
+        WidgetRefresher.request(applicationContext)
         return Result.success()
     }
 

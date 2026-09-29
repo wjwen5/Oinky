@@ -3,11 +3,13 @@ package com.oinky.app.data
 import android.content.Context
 import android.net.Uri
 import com.oinky.app.rates.ExchangeRateRepository
+import com.oinky.app.widget.WidgetRefresher
 import com.oinky.core.Category
 import com.oinky.core.CategoryClassifier
 import com.oinky.core.ExpectedPayment
 import com.oinky.core.MissedOccurrence
 import com.oinky.core.MissedPaymentDetector
+import com.oinky.core.ParsedEntry
 import com.oinky.core.QuickEntryParser
 import com.oinky.core.RecurrenceDetector
 import com.oinky.core.RecurrenceSuggestion
@@ -41,6 +43,9 @@ data class TxnDraft(
     val tripChosen: Boolean = false,
 )
 
+/** Live preview of a quick entry, with the amount in the main currency when a rate is known. */
+data class QuickPreview(val parsed: ParsedEntry, val inMain: BigDecimal?, val mainCurrency: String)
+
 class LedgerRepository(
     private val context: Context,
     private val db: AppDatabase,
@@ -57,12 +62,14 @@ class LedgerRepository(
     suspend fun setMood(day: Long, score: Int?) {
         val current = db.days().get(day) ?: DayEntry(day)
         db.days().upsert(current.copy(moodScore = score, updatedAt = System.currentTimeMillis()))
+        WidgetRefresher.request(context)
     }
 
     suspend fun setNote(day: Long, note: String) {
         val current = db.days().get(day) ?: DayEntry(day)
         if (current.note == note) return
         db.days().upsert(current.copy(note = note, updatedAt = System.currentTimeMillis()))
+        WidgetRefresher.request(context)
     }
 
     /** Copies a picked image into app storage so it survives the source being deleted. */
@@ -120,16 +127,42 @@ class LedgerRepository(
             tripId = if (draft.tripChosen) draft.tripId else db.trips().covering(draft.date.toEpochDay())?.id,
         )
         learnCategory(draft)
-        return if (draft.id == 0L) {
+        val id = if (draft.id == 0L) {
             db.txns().insert(entity)
         } else {
             val old = db.txns().get(draft.id)
             db.txns().update(entity.copy(createdAt = old?.createdAt ?: entity.createdAt))
             draft.id
         }
+        WidgetRefresher.request(context)
+        return id
     }
 
-    suspend fun deleteTxn(txn: TxnEntity) = db.txns().delete(txn)
+    /**
+     * Parses and saves a quick entry like "rm135 on dinner" as of [pageDate] (relative dates such
+     * as "yesterday" count from it). Returns null when no amount could be found.
+     */
+    suspend fun addQuick(text: String, pageDate: LocalDate): Pair<ParsedEntry, Long>? {
+        val p = quickParser(pageDate).parse(text) ?: return null
+        val id = saveTxn(
+            TxnDraft(
+                date = p.date, type = p.type, category = p.category, amount = p.amount,
+                currency = p.currency, note = p.note, merchant = p.merchant,
+            ),
+        )
+        return p to id
+    }
+
+    suspend fun quickPreview(text: String, pageDate: LocalDate, parser: QuickEntryParser? = null): QuickPreview? {
+        val p = (parser ?: quickParser(pageDate)).parse(text) ?: return null
+        val main = settings.mainCurrency.value
+        return QuickPreview(p, rates.table()?.convert(p.amount, p.currency, main), main)
+    }
+
+    suspend fun deleteTxn(txn: TxnEntity) {
+        db.txns().delete(txn)
+        WidgetRefresher.request(context)
+    }
 
     suspend fun getTxn(id: Long) = db.txns().get(id)
 

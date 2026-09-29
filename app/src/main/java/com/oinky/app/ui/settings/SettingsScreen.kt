@@ -2,6 +2,8 @@
 
 package com.oinky.app.ui.settings
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -27,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,6 +39,7 @@ import androidx.lifecycle.viewModelScope
 import com.oinky.app.AppContainer
 import com.oinky.app.ui.components.CurrencyPicker
 import com.oinky.app.ui.components.containerViewModel
+import com.oinky.app.widget.OinkyWidgetReceiver
 import com.oinky.core.Currencies
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -79,7 +85,7 @@ fun SettingsScreen() {
 
     Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Card(Modifier.fillMaxWidth()) {
@@ -131,6 +137,7 @@ fun SettingsScreen() {
                     Switch(reminder, vm::setDiaryReminder)
                 }
             }
+            WidgetCard()
             busy?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }
     }
@@ -143,5 +150,34 @@ fun SettingsScreen() {
             confirmButton = { TextButton(onClick = { vm.changeMain(code); confirm = null; custom = "" }) { Text("Switch") } },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
         )
+    }
+}
+
+@Composable
+private fun WidgetCard() {
+    val context = LocalContext.current
+    val manager = remember { AppWidgetManager.getInstance(context) }
+    var manual by remember { mutableStateOf(false) }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("🐷 Home-screen widget", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Log spending and today's mood without opening the app.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(onClick = {
+                if (manager.isRequestPinAppWidgetSupported) {
+                    manager.requestPinAppWidget(ComponentName(context, OinkyWidgetReceiver::class.java), null, null)
+                } else {
+                    manual = true
+                }
+            }) { Text("Add to home screen") }
+            if (manual) {
+                Text(
+                    "Your launcher doesn't support adding it from here: long-press the home screen → Widgets → Oinky.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
     }
 }

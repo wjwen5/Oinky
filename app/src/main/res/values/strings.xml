@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Oinky</string>
+    <string name="widget_name">Oinky quick entry</string>
+    <string name="widget_description">Log spending and today\'s mood from your home screen</string>
 </resources>

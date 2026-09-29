@@ -6,6 +6,7 @@ import android.location.Geocoder
 import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
+import com.oinky.app.widget.WidgetRefresher
 import com.oinky.core.Countries
 import com.oinky.core.TripMath
 import com.oinky.core.WorldMapData
@@ -52,6 +53,7 @@ class TripRepository(
         val id = if (trip.id == 0L) db.trips().insert(trip) else trip.id.also { db.trips().update(trip) }
         db.trips().releaseTxnsOutside(id, trip.startEpochDay, trip.endEpochDay)
         db.trips().claimTxns(id, trip.startEpochDay, trip.endEpochDay)
+        WidgetRefresher.request(context)
         return id
     }
 

@@ -1,3 +1,12 @@
 <resources>
     <style name="Theme.Oinky" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- See-through, dimmed window for the widget's quick-entry card. -->
+    <style name="Theme.Oinky.Translucent" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.InputMethod</item>
+    </style>
 </resources>

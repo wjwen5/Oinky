@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.oinky.app.AppContainer
 import com.oinky.app.data.PhotoEntity
+import com.oinky.app.data.QuickPreview
 import com.oinky.app.data.RecurringEntity
 import com.oinky.app.data.TripEntity
 import com.oinky.app.data.TxnDraft
@@ -13,7 +14,6 @@ import com.oinky.app.data.toMinor
 import com.oinky.core.Currencies
 import com.oinky.core.Frequency
 import com.oinky.core.Mood
-import com.oinky.core.ParsedEntry
 import com.oinky.core.QuickEntryParser
 import com.oinky.core.RecurringMode
 import com.oinky.core.TxnType
@@ -51,8 +51,6 @@ data class DayUiState(
     val income: BigDecimal get() = txns.filter { it.type == TxnType.INCOME }.fold(BigDecimal.ZERO) { a, t -> a + t.baseAmount }
 }
 
-data class QuickPreview(val parsed: ParsedEntry, val inMain: BigDecimal?, val mainCurrency: String)
-
 data class EditorRequest(val draft: TxnDraft, val title: String, val existing: TxnEntity? = null)
 
 sealed interface DayEvent {
@@ -86,9 +84,7 @@ class DayViewModel(private val c: AppContainer, epochDay: Long) : ViewModel() {
     val preview: StateFlow<QuickPreview?> = quickText
         .debounce(120)
         .mapLatest { text ->
-            val p = parser()?.parse(text) ?: return@mapLatest null
-            val main = c.settings.mainCurrency.value
-            QuickPreview(p, c.rates.table()?.convert(p.amount, p.currency, main), main)
+            c.ledger.quickPreview(text, date, parser())
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -131,17 +127,10 @@ class DayViewModel(private val c: AppContainer, epochDay: Long) : ViewModel() {
 
     /** Saves the quick entry straight away; the snackbar offers undo / edit. */
     fun submitQuick() = viewModelScope.launch {
-        val p = parser()?.parse(quickText.value)
-        if (p == null) {
+        val (p, id) = c.ledger.addQuick(quickText.value, date) ?: run {
             _events.emit(DayEvent.Message("Couldn't find an amount — try “rm135 on dinner”"))
             return@launch
         }
-        val id = c.ledger.saveTxn(
-            TxnDraft(
-                date = p.date, type = p.type, category = p.category, amount = p.amount,
-                currency = p.currency, note = p.note, merchant = p.merchant,
-            ),
-        )
         quickText.value = ""
         val where = if (p.date != date) " on ${p.date}" else ""
         _events.emit(DayEvent.Added(id, "${p.category.emoji} ${p.note.ifBlank { p.category.label }} · ${Currencies.format(p.amount, p.currency)}$where"))

@@ -25,6 +25,15 @@ An Android app (Kotlin + Jetpack Compose) that works like a diary. Each day you 
 | **Travel journal** | Each trip day shows its mood, note, spending and photos. The calendar marks trip days with the country's flag, and a day's page shows "Day 3 of Japan". |
 | **Photos** | Diary photos from trip days collect in the trip's photo gallery. **Add photos** on a trip imports many at once and files each one on the day it was taken (from the photo's date data). |
 
+### Home-screen widget 🐷
+
+A resizable 4×2 widget (Settings → **Add to home screen**, or long-press the home screen → Widgets → Oinky) shows:
+- today's total spent and number of entries, plus a flag and day number when you're on a trip;
+- a **✏️ rm135 on dinner…** pill that opens a small quick-entry card over the home screen, with a live preview; press Enter and it saves and closes;
+- five mood emojis: tap one to set today's mood, tap it again to clear it.
+
+It updates straight away whenever you add entries, and at midnight.
+
 Extras already built in:
 - **Learns your categories.** If you change a suggested category, the app remembers that phrase or merchant for next time.
 - **Spots recurring patterns.** If you log something like "haircut" about once a month by hand, the Recurring tab offers to track it.
@@ -98,7 +107,7 @@ Minimum Android version is 8.0 (API 26).
 4. **Spending "why" tags.** A one-tap reason on each purchase (bored / treat / need / social) turns mood × money into advice you can act on, which is the core idea of Mindspend.
 5. ~~Trips~~ (done). Next steps: offline map tiles or a city-level map (osmdroid/MapLibre) for zooming into a trip, a route line joining places in order, and a shareable trip recap image.
 6. **Budgets and gentle limits**, per category and per mood ("you tend to overspend on 😔 days, want a soft cap?").
-7. **Home-screen widget** that shows today's mood picker and a quick-entry field.
+7. ~~Home-screen widget~~ (done). Next: receipt scan and voice entry from the widget.
 8. **On This Day.** Resurface past entries and photos, as Day One and Daylio do, so people come back to the app.
 9. **Privacy and backup.** Biometric lock, encrypted export, backup to Google Drive, and CSV/QIF export for spreadsheets.
 10. **Split bills** with friends, with amounts owed by each person in their own currency.

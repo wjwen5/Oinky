@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.oinky.app.data.QuickPreview
 import com.oinky.app.data.TxnEntity
 import com.oinky.app.ui.components.TransactionEditorDialog
 import com.oinky.app.ui.components.containerViewModel

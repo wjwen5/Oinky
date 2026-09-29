@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.glance.appwidget)
 
     implementation(libs.mlkit.text.recognition)
     implementation(libs.kotlinx.coroutines.android)
