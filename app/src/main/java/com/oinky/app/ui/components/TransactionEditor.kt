@@ -15,6 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +46,8 @@ import com.oinky.core.Frequency
 import com.oinky.core.TxnType
 import java.io.File
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 /**
@@ -69,6 +74,8 @@ fun TransactionEditorDialog(
     var merchant by remember { mutableStateOf(initial.merchant.orEmpty()) }
     var repeat by remember { mutableStateOf<Frequency?>(null) }
     var tripId by remember { mutableStateOf(initial.tripId) }
+    var date by remember { mutableStateOf(initial.date) }
+    var pickDate by remember { mutableStateOf(false) }
     var tripChosen by remember { mutableStateOf(initial.tripChosen) }
 
     val amount = amountText.replace(",", "").toBigDecimalOrNull()
@@ -79,11 +86,10 @@ fun TransactionEditorDialog(
         title = { Text(title) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    initial.date.format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy")),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // The date the money left your account: for a booking, when you paid, not the trip date.
+                TextButton(onClick = { pickDate = true }) {
+                    Text("📅 " + date.format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy")), style = MaterialTheme.typography.labelLarge)
+                }
                 initial.receiptPath?.let { path ->
                     AsyncImage(
                         model = File(path), contentDescription = "Receipt",
@@ -133,13 +139,31 @@ fun TransactionEditorDialog(
                     }
                 }
                 if (trips.isNotEmpty()) {
-                    Text("Trip", style = MaterialTheme.typography.labelLarge)
+                    // Trips on this date first, then upcoming ones (bookings), then recent past ones.
+                    val ordered = trips.sortedWith(
+                        compareBy<TripEntity>(
+                            { t -> if (date in t.range) 0 else if (t.start.isAfter(date)) 1 else 2 },
+                            { t -> if (t.start.isAfter(date)) t.startEpochDay else -t.startEpochDay },
+                        ),
+                    )
+                    val upcoming = ordered.firstOrNull { it.start.isAfter(date) }
+                    val covering = ordered.firstOrNull { date in it.range }
+                    Text("Part of a trip", style = MaterialTheme.typography.labelLarge)
+                    if (covering == null && upcoming != null && tripId == null &&
+                        (category == Category.TRAVEL || category == Category.HOUSING)
+                    ) {
+                        Text(
+                            "Booking for ${upcoming.emoji} ${upcoming.name}? Link it so it counts toward that trip's cost.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         FilterChip(
                             selected = tripId == null, onClick = { tripId = null; tripChosen = true },
                             label = { Text("None") },
                         )
-                        trips.take(5).forEach { t ->
+                        ordered.take(5).forEach { t ->
                             FilterChip(
                                 selected = tripId == t.id, onClick = { tripId = t.id; tripChosen = true },
                                 label = { Text("${t.emoji} ${t.name}") },
@@ -171,7 +195,7 @@ fun TransactionEditorDialog(
                         initial.copy(
                             type = type, amount = amount!!, currency = currency, category = category,
                             note = note, merchant = merchant.ifBlank { null },
-                            tripId = tripId, tripChosen = tripChosen,
+                            tripId = tripId, tripChosen = tripChosen, date = date,
                         ),
                         repeat,
                     )
@@ -180,4 +204,20 @@ fun TransactionEditorDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+
+    if (pickDate) {
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = date.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { pickDate = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { date = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }
+                    pickDate = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { pickDate = false }) { Text("Cancel") } },
+        ) { DatePicker(state) }
+    }
 }

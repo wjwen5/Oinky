@@ -7,6 +7,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import com.oinky.app.widget.WidgetRefresher
+import com.oinky.core.Category
 import com.oinky.core.Countries
 import com.oinky.core.TripMath
 import com.oinky.core.WorldMapData
@@ -50,11 +51,32 @@ class TripRepository(
 
     /** Saves the trip and re-links the money entries that fall inside its dates. */
     suspend fun saveTrip(trip: TripEntity): Long {
+        val old = if (trip.id == 0L) null else db.trips().get(trip.id)
         val id = if (trip.id == 0L) db.trips().insert(trip) else trip.id.also { db.trips().update(trip) }
-        db.trips().releaseTxnsOutside(id, trip.startEpochDay, trip.endEpochDay)
+        if (old != null) {
+            db.trips().releaseDateLinkedOutside(id, old.startEpochDay, old.endEpochDay, trip.startEpochDay, trip.endEpochDay)
+        }
         db.trips().claimTxns(id, trip.startEpochDay, trip.endEpochDay)
         WidgetRefresher.request(context)
         return id
+    }
+
+    /**
+     * Expenses that might be bookings for [trip]: from a year before it until a month after,
+     * outside its dates, not linked to another trip. Travel-looking ones first.
+     */
+    suspend fun bookingCandidates(trip: TripEntity): List<TxnEntity> =
+        db.trips().bookingCandidates(
+            trip.id, trip.startEpochDay - 365, trip.endEpochDay + 30, trip.startEpochDay, trip.endEpochDay,
+        ).sortedByDescending { it.category == Category.TRAVEL || it.category == Category.HOUSING }
+
+    /** Makes exactly [selected] (among [candidates]) the trip's linked bookings. */
+    suspend fun setBookings(trip: TripEntity, candidates: List<TxnEntity>, selected: Set<Long>) {
+        val link = candidates.filter { it.id in selected && it.tripId != trip.id }.map { it.id }
+        val unlink = candidates.filter { it.id !in selected && it.tripId == trip.id }.map { it.id }
+        if (link.isNotEmpty()) db.trips().linkTxns(trip.id, link)
+        if (unlink.isNotEmpty()) db.trips().unlinkTxns(trip.id, unlink)
+        WidgetRefresher.request(context)
     }
 
     suspend fun deleteTrip(trip: TripEntity) {

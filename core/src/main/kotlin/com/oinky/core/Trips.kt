@@ -27,13 +27,19 @@ data class TripSpend(
 )
 
 data class TripStats(
+    /** Everything linked to the trip: bookings made ahead + spending on the trip. */
     val spent: BigDecimal,
+    /** Linked expenses dated outside the trip: flights, hotels, tours booked ahead (or paid after). */
+    val upfront: BigDecimal,
+    /** Expenses dated within the trip. */
+    val onTrip: BigDecimal,
     val income: BigDecimal,
+    /** Average per day on the trip so far; bookings made ahead are excluded. */
     val perDay: BigDecimal,
     val byCategory: List<Pair<Category, BigDecimal>>,
     val byCurrency: List<Pair<String, BigDecimal>>,
     val byDay: Map<LocalDate, BigDecimal>,
-    /** Share of budget used (can exceed 1), null without a budget. */
+    /** Share of budget used (can exceed 1), null without a budget. Bookings count toward the budget. */
     val budgetUsed: Double?,
     /** Budget left per remaining day, when the trip is ongoing and has a budget. */
     val dailyAllowance: BigDecimal?,
@@ -71,6 +77,8 @@ object TripMath {
     ): TripStats {
         val expenses = spends.filter { it.type == TxnType.EXPENSE }
         val spent = expenses.fold(BigDecimal.ZERO) { a, s -> a + s.amountInBase }
+        val during = expenses.filter { it.date in trip }
+        val onTrip = during.fold(BigDecimal.ZERO) { a, s -> a + s.amountInBase }
         val income = spends.filter { it.type == TxnType.INCOME }.fold(BigDecimal.ZERO) { a, s -> a + s.amountInBase }
         // Per-day average counts days elapsed so far for an ongoing trip.
         val elapsed = when {
@@ -86,15 +94,18 @@ object TripMath {
         } else null
         return TripStats(
             spent = spent,
+            upfront = spent - onTrip,
+            onTrip = onTrip,
             income = income,
-            perDay = spent.divide(BigDecimal(elapsed), 2, RoundingMode.HALF_UP),
+            // Per-day is "what a day there costs", so upfront bookings don't inflate it.
+            perDay = onTrip.divide(BigDecimal(elapsed), 2, RoundingMode.HALF_UP),
             byCategory = expenses.groupBy { it.category }
                 .map { (c, l) -> c to l.fold(BigDecimal.ZERO) { a, s -> a + s.amountInBase } }
                 .sortedByDescending { it.second },
             byCurrency = expenses.groupBy { it.currency }
                 .map { (c, l) -> c to l.fold(BigDecimal.ZERO) { a, s -> a + s.amount } }
                 .sortedByDescending { it.second },
-            byDay = expenses.groupBy { it.date }.mapValues { (_, l) -> l.fold(BigDecimal.ZERO) { a, s -> a + s.amountInBase } },
+            byDay = during.groupBy { it.date }.mapValues { (_, l) -> l.fold(BigDecimal.ZERO) { a, s -> a + s.amountInBase } },
             budgetUsed = budgetUsed,
             dailyAllowance = allowance,
         )

@@ -128,8 +128,30 @@ interface TripDao {
     @Query("UPDATE transactions SET tripId = :tripId WHERE tripId IS NULL AND epochDay BETWEEN :from AND :to")
     suspend fun claimTxns(tripId: Long, from: Long, to: Long)
 
-    @Query("UPDATE transactions SET tripId = NULL WHERE tripId = :tripId AND (epochDay < :from OR epochDay > :to)")
-    suspend fun releaseTxnsOutside(tripId: Long, from: Long, to: Long)
+    /**
+     * When a trip's dates change, release entries that were linked only because they fell inside
+     * the old dates and now fall outside. Entries outside the old dates were linked by hand
+     * (flights, hotels booked ahead) and stay linked.
+     */
+    @Query(
+        "UPDATE transactions SET tripId = NULL WHERE tripId = :tripId " +
+            "AND epochDay BETWEEN :oldFrom AND :oldTo AND (epochDay < :from OR epochDay > :to)",
+    )
+    suspend fun releaseDateLinkedOutside(tripId: Long, oldFrom: Long, oldTo: Long, from: Long, to: Long)
+
+    /** Expenses around a trip that could be bookings for it: unlinked, or already linked to it. */
+    @Query(
+        "SELECT * FROM transactions WHERE type = 'EXPENSE' AND (tripId IS NULL OR tripId = :tripId) " +
+            "AND epochDay BETWEEN :from AND :to AND (epochDay < :tripFrom OR epochDay > :tripTo) " +
+            "ORDER BY epochDay DESC",
+    )
+    suspend fun bookingCandidates(tripId: Long, from: Long, to: Long, tripFrom: Long, tripTo: Long): List<TxnEntity>
+
+    @Query("UPDATE transactions SET tripId = :tripId WHERE id IN (:ids)")
+    suspend fun linkTxns(tripId: Long, ids: List<Long>)
+
+    @Query("UPDATE transactions SET tripId = NULL WHERE tripId = :tripId AND id IN (:ids)")
+    suspend fun unlinkTxns(tripId: Long, ids: List<Long>)
 
     @Query("UPDATE transactions SET tripId = NULL WHERE tripId = :tripId")
     suspend fun releaseAllTxns(tripId: Long)

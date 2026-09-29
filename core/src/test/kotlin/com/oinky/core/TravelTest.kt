@@ -90,6 +90,21 @@ class TripMathTest {
         assertEquals(BigDecimal("88.89"), s.dailyAllowance) // 800 left over 9 days
     }
 
+    @Test fun `bookings made ahead count toward the total and budget but not the daily average`() {
+        val flight = TripSpend(LocalDate.of(2026, 8, 15), TxnType.EXPENSE, Category.TRAVEL, "SGD", BigDecimal("600"), BigDecimal("600"))
+        val hotel = TripSpend(LocalDate.of(2026, 9, 1), TxnType.EXPENSE, Category.TRAVEL, "JPY", BigDecimal("88000"), BigDecimal("800"))
+        val dinner = spend(1, "100")
+        val s = TripMath.stats(japan, listOf(flight, hotel, dinner), budgetInBase = BigDecimal("3000"), today = LocalDate.of(2026, 10, 1))
+        assertEquals(BigDecimal("1500"), s.spent)
+        assertEquals(BigDecimal("1400"), s.upfront)
+        assertEquals(BigDecimal("100"), s.onTrip)
+        assertEquals(BigDecimal("100.00"), s.perDay) // day 1 of the trip; flight/hotel excluded
+        assertEquals(0.5, s.budgetUsed!!, 1e-9)
+        assertEquals(Category.TRAVEL, s.byCategory.first().first)
+        assertEquals(setOf(LocalDate.of(2026, 10, 1)), s.byDay.keys) // journal days only
+        assertEquals(BigDecimal("150.00"), s.dailyAllowance) // (3000 - 1500) / 10 days left
+    }
+
     @Test fun `travel summary dedupes overlapping days and home country`() {
         val osaka = TripRange(2, LocalDate.of(2026, 10, 4), LocalDate.of(2026, 10, 6))
         val kl = TripRange(3, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 2))
